@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusFest - College Event Management</title>
+<style>
+:root{--pink:#e91e8c;--dark:#a3125f;--bg1:#ffe4f0;--bg2:#ffc2dd;--card:#fff;--text:#3b0a26;--muted:#7a4a63;--tagbg:#ffd3e8}
+[data-theme=dark]{--bg1:#2a0a1c;--bg2:#4a1230;--card:#3a1027;--text:#ffe4f0;--muted:#f5b5d3;--tagbg:#5a1a3d;--dark:#ff8cc6}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);min-height:100vh;
+background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
+nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 24px;background:var(--pink);color:#fff;position:sticky;top:0;z-index:5}
+nav b{font-size:1.3rem;margin-right:auto}
+nav button{background:transparent;border:0;color:#fff;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:.95rem}
+nav button:hover,nav button.on{background:rgba(255,255,255,.25)}
+main{max-width:1050px;margin:24px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+.card{background:var(--card);border-radius:16px;padding:18px;box-shadow:0 6px 18px rgba(233,30,140,.15)}
+.card h3{margin:0 0 6px;color:var(--dark)}
+.tag{display:inline-block;background:var(--tagbg);color:var(--dark);border-radius:12px;padding:2px 10px;font-size:.78rem;margin-bottom:8px}
+.meta{font-size:.88rem;color:var(--muted);margin:4px 0}
+input,select,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #f5a9cf;border-radius:10px;font:inherit;background:var(--card);color:var(--text)}
+.bar{display:flex;gap:10px;margin-bottom:18px}
+.btn{background:var(--pink);color:#fff;border:0;padding:9px 16px;border-radius:10px;cursor:pointer;font:inherit}
+.btn:hover{background:var(--dark)}.btn.alt{background:#fff;color:var(--pink);border:1px solid var(--pink)}
+.form{max-width:460px;margin:auto}
+.stat{display:flex;gap:14px;margin-bottom:18px}.stat .card{flex:1;text-align:center}
+.stat h2{margin:0;font-size:2rem;color:var(--pink)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0}
+.fill{background:linear-gradient(90deg,var(--pink),#ff7ab8);height:14px;border-radius:8px;color:#fff;font-size:.7rem;padding-left:6px}
+.status{font-weight:600;font-size:.8rem}
+label{display:block;font-weight:600;font-size:.85rem;color:var(--dark);margin-top:8px}
+.two{display:flex;gap:10px}.two>div{flex:1}
+.money{position:relative}.money span{position:absolute;left:12px;top:12px;font-weight:600;color:var(--dark)}
+.money input{padding-left:28px}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);padding:12px 22px;border-radius:12px;color:#fff;
+font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.2);display:none;z-index:10;max-width:90%}
+.overlay{position:fixed;inset:0;background:rgba(80,10,50,.55);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.ticket{background:var(--card);color:var(--text);border-radius:20px;width:340px;max-width:100%;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center}
+.ticket .top{background:linear-gradient(135deg,var(--pink),#ff7ab8);color:#fff;padding:18px}
+.ticket .top h2{margin:6px 0 0}.ticket .body{padding:18px;border-top:2px dashed #f5a9cf}
+.ticket .code{font-family:monospace;font-weight:700;letter-spacing:1px;color:var(--dark);margin-top:10px}
+#qr{display:flex;justify-content:center;margin:8px 0}
+.ok{color:#1f9d55;font-weight:700}
+@media print{body>*:not(#modal){display:none!important}.noprint{display:none!important}.overlay{background:#fff}}
+.cert{background:#fff;color:#3b0a26;border:10px double var(--pink);border-radius:8px;padding:28px;max-width:640px;text-align:center}
+.cert h1{color:var(--pink);margin:8px 0}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal>div{background:var(--card);border-radius:8px;min-height:80px;padding:4px;font-size:.75rem;overflow:hidden}
+.cal .h{min-height:0;text-align:center;font-weight:700;color:var(--dark)}
+.cal-e{background:var(--pink);color:#fff;border-radius:5px;padding:2px 4px;margin-top:3px;font-size:.7rem}
+@media(max-width:640px){nav{padding:10px}main{margin:14px auto}.two,.stat,.bar{flex-direction:column}.cal>div{min-height:56px}.cal-e{font-size:.6rem}}
+.poster{width:100%;height:160px;object-fit:cover;border-radius:12px;margin-bottom:10px}
+#reader{width:100%;margin-top:12px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+<nav id="nav"></nav>
+<main id="app"></main>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let me = null, editId = null, evs = [], posterData, scanner = null;
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+function toast(msg, ok = true) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#1f9d55' : '#d62839';
+  t.style.display = 'block';
+  clearTimeout(t.timer);
+  t.timer = setTimeout(() => t.style.display = 'none', 3500);
+}
+window.alert = m => toast(m, !/error|wrong|full|already|not allowed|invalid|please|missing/i.test(m));
+window.addEventListener('error', e => toast('Page error: ' + e.message, false));
+window.addEventListener('unhandledrejection', e => { if (e.reason && e.reason.message) console.log(e.reason.message); });
+
+async function api(path, method = 'GET', body) {
+  let r;
+  try {
+    r = await fetch('/api/' + path, {
+      method, headers: {'Content-Type': 'application/json'},
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (e) {
+    toast('Cannot reach server. Is "python app.py" still running in the terminal?', false);
+    throw e;
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(d.error || 'Something went wrong'); throw new Error(d.error); }
+  return d;
+}
+
+function nav(active) {
+  const items = [['events', 'Events'], ['calendar', 'Calendar'], ['notices', 'Notices']];
+  if (me?.role === 'student') items.push(['mine', 'My Registrations']);
+  if (me && me.role !== 'student') items.push(['manage', 'My Events'], ['create', '+ Create Event'], ['checkin', 'Check-in']);
+  if (me?.role === 'admin') items.push(['admin', 'Admin Panel']);
+  $('#nav').innerHTML = '<b>🎀 CampusFest</b><button onclick="toggleTheme()">🌓</button>' +
+    items.map(([k, l]) => `<button class="${k === active ? 'on' : ''}" onclick="go('${k}')">${l}</button>`).join('') +
+    (me ? `<span>Hi, ${me.name} (${me.role})</span><button onclick="logout()">Logout</button>`
+        : `<button onclick="go('login')">Login</button><button onclick="go('signup')">Sign up</button>`);
+}
+
+function go(v) { nav(v); views[v](); }
+
+const eventCard = (e, actions = '') => `
+  <div class="card">${e.poster ? `<img class="poster" src="${esc(e.poster)}">` : ''}<span class="tag">${e.category}</span>${e.rating ? `<span class="tag">★ ${e.rating}</span>` : ''}
+  <h3>${e.title}</h3><p class="meta">${e.description || ''}</p>
+  <p class="meta">📅 ${e.date} at ${e.time}</p><p class="meta">📍 ${e.venue}</p>
+  <p class="meta">🎟 ${e.registered ?? ''}${e.capacity ? ' / ' + e.capacity : ''} seats · ${e.fee ? '₹' + e.fee : 'Free'}${e.team_size > 1 ? ' · Team of ' + e.team_size : ''}</p>
+  ${e.status ? `<p class="status">Status: ${e.status}</p>` : ''}${actions}</div>`;
+
+const views = {
+  async events() {
+    $('#app').innerHTML = `<div class="bar">
+      <input id="s" placeholder="Search events..." oninput="loadEvents()">
+      <select id="c" onchange="loadEvents()"><option value="">All categories</option>
+      ${['Tech', 'Cultural', 'Sports', 'Workshop', 'Seminar'].map(c => `<option>${c}</option>`).join('')}</select></div>
+      <div class="grid" id="list"></div>`;
+    loadEvents();
+  },
+  async mine() {
+    const list = await api('my-registrations');
+    $('#app').innerHTML = '<div class="grid">' + (list.map(e =>
+      eventCard(e, `<div class="row">${e.waitlisted ? '<b>⏳ On waitlist</b>' : `<button class="btn" onclick="showTicket(${e.id})">🎟 Ticket</button><button class="btn alt" onclick="rate(${e.id})">⭐ Rate</button>${e.attended ? `<button class="btn" onclick="showCertificate(${e.id})">🎓 Certificate</button>` : ''}`}<button class="btn alt" onclick="leave(${e.id},'mine')">Cancel</button></div>`)).join('')
+      || '<p>You have not registered for any event yet.</p>') + '</div>';
+  },
+  async manage() {
+    const list = await api('events?scope=mine'); window.myEvents = list;
+    $('#app').innerHTML = '<div class="grid">' + (list.map(e => eventCard(e,
+      `<div class="row"><a class="btn alt" href="/api/events/${e.id}/csv">⬇ Participants CSV</a>
+       <button class="btn alt" onclick="showParts(${e.id})">👥 Participants</button>
+       <button class="btn alt" onclick="views.create(myEvents.find(x => x.id === ${e.id}))">✏ Edit</button>
+       <button class="btn alt" onclick="askNotice(${e.id})">📢 Notice</button>
+       <button class="btn alt" onclick="del(${e.id})">Delete</button></div>`)).join('')
+      || '<p>No events yet. Create one!</p>') + '</div>';
+  },
+  create(e = {}) {
+    editId = e.id || null; posterData = undefined;
+    $('#app').innerHTML = `<div class="card form"><h2>${editId ? 'Edit Event' : 'Create Event'}</h2>
+      <label>Event Title</label><input id="t" value="${esc(e.title)}" placeholder="e.g. Hackathon 2026">
+      <label>Poster image (optional)</label><input type="file" accept="image/*" onchange="pickPoster(this)">
+      <img id="pv" class="poster" style="display:${e.poster ? 'block' : 'none'}" src="${e.poster ? esc(e.poster) : ''}">
+      <label>Description</label><textarea id="d" placeholder="What is this event about?">${esc(e.description)}</textarea>
+      <label>Category</label>
+      <select id="cat"><option>Tech</option><option>Cultural</option><option>Sports</option><option>Workshop</option><option>Seminar</option></select>
+      <label>Venue</label><input id="v" value="${esc(e.venue)}" placeholder="e.g. Main Auditorium">
+      <div class="two"><div><label>Date</label><input id="dt" type="date" value="${e.date || ''}"></div>
+      <div><label>Time</label><input id="tm" type="time" value="${e.time || ''}"></div></div>
+      <div class="two"><div><label>Capacity (max students)</label><input id="cap" type="number" min="1" value="${e.capacity || 100}"></div>
+      <div><label>Fee (0 = Free)</label><div class="money"><span>₹</span><input id="fee" type="number" min="0" value="${e.fee || 0}"></div></div></div>
+      <div class="two"><div><label>Team size (1 = individual)</label><input id="ts" type="number" min="1" value="${e.team_size || 1}"></div>
+      <div><label>UPI ID for payments</label><input id="upi" value="${esc(e.upi)}" placeholder="name@bank"></div></div>
+      <button class="btn" style="margin-top:12px" onclick="submitEvent()">${editId ? 'Save Changes' : 'Submit Event'}</button></div>`;
+    $('#cat').value = e.category || 'Tech';
+  },
+  async notices() {
+    const l = await api('announcements');
+    $('#app').innerHTML = '<h2>📢 Notice Board</h2>' + (l.map(a => `<div class="card" style="margin-bottom:12px">
+      <span class="tag">${esc(a.title)}</span><p>${esc(a.message)}</p>
+      <p class="meta">by ${esc(a.organizer)} · ${a.created}</p></div>`).join('') || '<p>No notices yet.</p>');
+  },
+  async calendar(step = 0) {
+    cal.setMonth(cal.getMonth() + step, 1);
+    const y = cal.getFullYear(), m = cal.getMonth(), list = await api('events');
+    const pad = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+    let cells = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="h">${d}</div>`).join('') + '<div style="background:none"></div>'.repeat(pad);
+    for (let d = 1; d <= days; d++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells += `<div><b>${d}</b>${list.filter(e => e.date === ds).map(e => `<div class="cal-e" title="${esc(e.venue)} ${e.time}">${esc(e.title)}</div>`).join('')}</div>`;
+    }
+    $('#app').innerHTML = `<div class="row" style="justify-content:space-between"><button class="btn alt" onclick="views.calendar(-1)">◀</button>
+      <h2>${cal.toLocaleString('default', {month: 'long'})} ${y}</h2><button class="btn alt" onclick="views.calendar(1)">▶</button></div><div class="cal">${cells}</div>`;
+  },
+  checkin() {
+    $('#app').innerHTML = `<div class="card form"><h2>Event Check-in</h2>
+      <p class="meta">Enter the ticket code shown on the student's QR ticket to mark attendance.</p>
+      <label>Ticket Code</label><input id="code" placeholder="e.g. CF001-002-A1B2C3" onkeydown="if(event.key==='Enter')doCheckin()">
+      <button class="btn" style="margin-top:12px" onclick="doCheckin()">Mark Present</button>
+      <button class="btn alt" style="margin-top:12px" onclick="startScan()">📷 Scan QR with camera</button><div id="reader"></div></div>`;
+  },
+  async admin() {
+    const [st, pend] = await Promise.all([api('stats'), api('events?scope=pending')]);
+    const max = Math.max(1, ...st.per_event.map(p => p.n));
+    $('#app').innerHTML = `<div class="stat">
+      <div class="card"><h2>${st.users}</h2>Users</div><div class="card"><h2>${st.events}</h2>Live events</div>
+      <div class="card"><h2>${st.registrations}</h2>Registrations</div>
+      <div class="card"><h2>${st.registrations ? Math.round(st.attended / st.registrations * 100) : 0}%</h2>Attendance rate</div></div>
+      <div class="card"><h3>Registrations per event</h3>${st.per_event.map(p => `<div class="row">
+        <span style="width:150px">${p.title}</span><div class="fill" style="width:${p.n / max * 100}%">${p.n}</div></div>`).join('')}</div>
+      <div class="card" style="margin:14px 0"><h3>Popular categories</h3>${bars(st.categories.map(c => [c.category, c.n]))}</div>
+      <h3>Pending approval</h3><div class="grid">${pend.map(e => eventCard(e,
+        `<div class="row"><button class="btn" onclick="review(${e.id},'approve')">Approve</button>
+         <button class="btn alt" onclick="review(${e.id},'reject')">Reject</button></div>`)).join('') || '<p>Nothing pending 🎉</p>'}</div>`;
+  },
+  login() {
+    $('#app').innerHTML = `<div class="card form"><h2>Login</h2>
+      <input id="e" placeholder="Email"><input id="p" type="password" placeholder="Password">
+      <button class="btn" onclick="login()">Login</button></div>`;
+  },
+  signup() {
+    $('#app').innerHTML = `<div class="card form"><h2>Sign up</h2>
+      <input id="n" placeholder="Full name"><input id="e" placeholder="Email">
+      <input id="p" type="password" placeholder="Password">
+      <select id="r"><option value="student">Student</option><option value="organizer">Club / Organizer</option></select>
+      <button class="btn" onclick="signup()">Create account</button></div>`;
+  }
+};
+
+async function loadEvents() {
+  const qs = new URLSearchParams({search: $('#s').value, category: $('#c').value});
+  const list = await api('events?' + qs); evs = list;
+  $('#list').innerHTML = list.map(e => {
+    let a = '';
+    if (me?.role === 'student')
+      a = e.joined === 2 ? `<b>⏳ Waitlisted</b> <button class="btn alt" onclick="leave(${e.id},'events')">Leave</button>`
+        : e.joined ? `<button class="btn alt" onclick="leave(${e.id},'events')">Unregister</button>`
+        : e.registered >= e.capacity ? `<button class="btn alt" onclick="join(${e.id})">Join Waitlist</button>`
+        : `<button class="btn" onclick="join(${e.id})">Register</button>`;
+    return eventCard(e, a);
+  }).join('') || '<p>No events found.</p>';
+}
+
+function join(id) {
+  const ev = evs.find(x => x.id === id);
+  if (ev && ev.team_size > 1) return modal(`<div class="ticket"><div class="top">👥 Team registration<br><small>Team of up to ${ev.team_size}</small></div><div class="body">
+    <input id="tn" placeholder="Team name"><textarea id="tm" placeholder="Member names (one per line)"></textarea>
+    <div class="row" style="justify-content:center"><button class="btn" onclick="doJoin(${id})">Register team</button>
+    <button class="btn alt" onclick="$('#modal').remove()">Cancel</button></div></div></div>`);
+  doJoin(id);
+}
+async function doJoin(id) {
+  const team = $('#tn') ? {team_name: $('#tn').value, team_members: $('#tm').value} : {};
+  $('#modal')?.remove();
+  const r = await api(`events/${id}/join`, 'POST', team); loadEvents();
+  if (r.waitlisted) toast('Event is full. You are on the waitlist and will get a ticket if a seat opens.');
+  else if (r.needs_payment) payModal(id, true);
+  else showTicket(id, true);
+}
+async function payModal(id, fresh) {
+  const p = await api(`events/${id}/payment-info`);
+  modal(`<div class="ticket"><div class="top">💳 Pay ₹${p.fee}<h2>${esc(p.title)}</h2></div><div class="body">
+    <p class="meta">Scan with any UPI app (GPay, PhonePe, Paytm)</p><div id="qr"></div>
+    <label style="text-align:left">UPI Transaction ID (after paying)</label><input id="utr" placeholder="12-digit UTR / reference no.">
+    <div class="row" style="justify-content:center"><button class="btn" onclick="sendUtr(${id})">I have paid</button>
+    ${p.razorpay ? `<button class="btn alt" onclick="payRazorpay(${id})">Pay with Razorpay</button>` : ''}
+    <button class="btn alt" onclick="showTicket(${id}, ${!!fresh})">Pay later</button></div></div></div>`);
+  if (typeof QRCode !== 'undefined') new QRCode($('#qr'), {text: p.upi, width: 180, height: 180});
+}
+async function sendUtr(id) {
+  await api(`events/${id}/pay`, 'POST', {utr: $('#utr').value});
+  toast('Payment submitted. The organizer will verify it.'); showTicket(id, true);
+}
+async function payRazorpay(id) {
+  const o = await api(`events/${id}/razorpay-order`, 'POST');
+  new Razorpay({key: o.key, amount: o.amount, currency: 'INR', order_id: o.order_id, name: 'CampusFest',
+    handler: async r => {
+      await api(`events/${id}/razorpay-verify`, 'POST', {order_id: r.razorpay_order_id, payment_id: r.razorpay_payment_id, signature: r.razorpay_signature});
+      toast('Payment successful!'); showTicket(id, true);
+    }}).open();
+}
+async function showParts(id) {
+  const l = await api(`events/${id}/participants`);
+  modal(`<div class="ticket" style="width:560px;max-height:85vh;overflow:auto"><div class="top">👥 Participants (${l.length})</div><div class="body" style="text-align:left">
+    ${l.map(p => `<div class="row" style="justify-content:space-between;border-bottom:1px solid #f5a9cf;padding:6px 0"><div><b>${esc(p.name)}</b> ${p.attended ? '✔' : ''}
+    <br><span class="meta">${esc(p.email)}${p.team_name ? ' · Team: ' + esc(p.team_name) : ''}${p.utr ? ' · UTR ' + esc(p.utr) : ''}${p.team_members ? '<br>' + esc(p.team_members).replace(/\n/g, ', ') : ''}</span></div>
+    <div>${p.payment === 'pending' ? `<button class="btn" onclick="verifyPay(${p.rid}, ${id})">Verify ₹</button>` : `<span class="tag">${p.payment}</span>`}</div></div>`).join('') || '<p>No registrations yet.</p>'}
+    <div class="row" style="justify-content:center"><button class="btn alt" onclick="$('#modal').remove()">Close</button></div></div></div>`);
+}
+async function verifyPay(rid, id) { await api(`registrations/${rid}/verify`, 'POST'); toast('Payment verified'); showParts(id); }
+
+async function showTicket(id, fresh) {
+  const t = await api(`events/${id}/ticket`);
+  $('#modal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="modal" onclick="if(event.target===this)this.remove()">
+    <div class="ticket"><div class="top">${t.payment === 'unpaid' ? '⏳ Seat reserved · Payment pending' : t.payment === 'pending' ? '⏳ Payment under verification' : fresh ? '🎉 You are registered!' : '🎟 Your Ticket'}<h2>${esc(t.title)}</h2></div>
+    <div class="body"><div id="qr"></div><div class="code">${t.ticket}</div>
+    ${t.payment === 'unpaid' ? `<p class="meta" style="color:#d62839"><b>Payment pending</b></p><button class="btn noprint" onclick="payModal(${id})">💳 Pay now</button>`
+      : t.payment === 'pending' ? '<p class="meta"><b>⏳ Payment under verification</b></p>'
+      : t.payment === 'paid' ? '<p class="ok">✔ Payment received</p>' : ''}
+    <p class="meta"><b>${esc(t.student)}</b></p><p class="meta">📅 ${t.date} at ${t.time}</p><p class="meta">📍 ${esc(t.venue)}</p>
+    ${t.attended ? `<p class="ok">✔ Attendance marked</p><button class="btn noprint" onclick="showCertificate(${id})">🎓 Certificate</button>` : (['unpaid', 'pending'].includes(t.payment) ? '<p class="meta">Complete payment to activate entry</p>' : '<p class="meta">Show this QR / code at the entrance</p>')}
+    <div class="row noprint" style="justify-content:center"><button class="btn" onclick="window.print()">⬇ Download PDF</button>
+    <button class="btn alt" onclick="$('#modal').remove()">Close</button></div></div></div></div>`);
+  if (typeof QRCode !== 'undefined') new QRCode($('#qr'), {text: t.ticket, width: 160, height: 160, colorDark: '#a3125f'});
+}
+
+const cal = new Date();
+const bars = rows => { const m = Math.max(1, ...rows.map(r => r[1]));
+  return rows.map(([l, n]) => `<div class="row"><span style="width:150px">${esc(l)}</span><div class="fill" style="width:${n / m * 100}%">${n}</div></div>`).join(''); };
+
+function toggleTheme() {
+  const d = document.documentElement.dataset.theme === 'dark' ? '' : 'dark';
+  document.documentElement.dataset.theme = d;
+  try { localStorage.setItem('theme', d); } catch (e) {}
+}
+try { document.documentElement.dataset.theme = localStorage.getItem('theme') || ''; } catch (e) {}
+
+function modal(html) {
+  $('#modal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `<div class="overlay" id="modal" onclick="if(event.target===this)this.remove()">${html}</div>`);
+}
+async function showCertificate(id) {
+  const t = await api(`events/${id}/ticket`);
+  modal(`<div class="cert"><p style="letter-spacing:4px;color:#a3125f">CERTIFICATE OF PARTICIPATION</p><p>This is proudly presented to</p>
+    <h1>${esc(t.student)}</h1><p>for participating in</p><h2>${esc(t.title)}</h2><p>held on ${t.date} at ${esc(t.venue)}</p>
+    <p style="margin-top:28px">🎀 CampusFest · College Event Management</p>
+    <div class="row noprint" style="justify-content:center"><button class="btn" onclick="window.print()">⬇ Download PDF</button>
+    <button class="btn alt" onclick="$('#modal').remove()">Close</button></div></div>`);
+}
+function rate(id) {
+  modal(`<div class="ticket"><div class="top">⭐ Rate this event</div><div class="body">
+    <select id="rt"><option value="5">★★★★★ Excellent</option><option value="4">★★★★ Good</option><option value="3">★★★ Average</option>
+    <option value="2">★★ Poor</option><option value="1">★ Bad</option></select>
+    <textarea id="rc" placeholder="Your feedback (optional)"></textarea>
+    <div class="row" style="justify-content:center"><button class="btn" onclick="sendRate(${id})">Submit</button>
+    <button class="btn alt" onclick="$('#modal').remove()">Cancel</button></div></div></div>`);
+}
+async function sendRate(id) {
+  await api(`events/${id}/feedback`, 'POST', {rating: $('#rt').value, comment: $('#rc').value});
+  $('#modal').remove(); toast('Thanks for your feedback!');
+}
+function askNotice(id) {
+  modal(`<div class="ticket"><div class="top">📢 Post a notice</div><div class="body">
+    <textarea id="nm" placeholder="e.g. Venue changed to Seminar Hall"></textarea>
+    <div class="row" style="justify-content:center"><button class="btn" onclick="sendNotice(${id})">Post</button>
+    <button class="btn alt" onclick="$('#modal').remove()">Cancel</button></div></div></div>`);
+}
+async function sendNotice(id) {
+  await api(`events/${id}/announce`, 'POST', {message: $('#nm').value});
+  $('#modal').remove(); toast('Notice posted!');
+}
+
+function pickPoster(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, 700 / img.width), c = document.createElement('canvas');
+    c.width = img.width * k; c.height = img.height * k;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    posterData = c.toDataURL('image/jpeg', 0.75);
+    $('#pv').src = posterData; $('#pv').style.display = 'block';
+  };
+  img.src = URL.createObjectURL(f);
+}
+
+async function startScan() {
+  if (typeof Html5Qrcode === 'undefined') return toast('Scanner not loaded. Check your internet connection.', false);
+  if (scanner) return;
+  scanner = new Html5Qrcode('reader');
+  try {
+    await scanner.start({facingMode: 'environment'}, {fps: 10, qrbox: 220}, async text => {
+      const s = scanner; scanner = null;
+      await s.stop();
+      $('#code').value = text;
+      try { await doCheckin(); } catch (e) {}
+    }, () => {});
+  } catch (e) {
+    scanner = null;
+    toast('Camera not available. Allow camera permission and use http://127.0.0.1:5000', false);
+  }
+}
+
+async function doCheckin() {
+  const r = await api('checkin', 'POST', {code: $('#code').value});
+  toast(`✔ ${r.name} marked present for ${r.title}`);
+  $('#code').value = '';
+}
+const leave = async (id, v) => { await api(`events/${id}/leave`, 'POST'); views[v](); };
+const del = async id => { if (confirm('Delete this event?')) { await api('events/' + id, 'DELETE'); views.manage(); } };
+const review = async (id, a) => { await api(`events/${id}/${a}`, 'POST'); views.admin(); };
+
+async function submitEvent() {
+  if (!$('#t').value.trim() || !$('#v').value.trim() || !$('#dt').value || !$('#tm').value)
+    return toast('Please fill title, venue, date and time', false);
+  toast('Submitting...');
+  const body = {
+    title: $('#t').value, description: $('#d').value, category: $('#cat').value,
+    venue: $('#v').value, date: $('#dt').value, time: $('#tm').value,
+    capacity: $('#cap').value, fee: $('#fee').value, team_size: $('#ts').value, upi: $('#upi').value, poster: posterData};
+  if (editId) {
+    await api('events/' + editId, 'PUT', body);
+    editId = null;
+    toast('Event updated!');
+  } else {
+    const r = await api('events', 'POST', body);
+    toast(r.status === 'approved' ? 'Event published!' : 'Submitted. Waiting for admin approval.');
+  }
+  go('manage');
+}
+async function login() {
+  const u = await api('login', 'POST', {email: $('#e').value, password: $('#p').value});
+  me = u; go('events');
+}
+async function signup() {
+  await api('register', 'POST', {name: $('#n').value, email: $('#e').value, password: $('#p').value, role: $('#r').value});
+  alert('Account created. Please login.'); go('login');
+}
+async function logout() { await api('logout', 'POST'); me = null; go('events'); }
+
+(async () => { me = (await api('me')).user; go('events'); })();
+</script>
+</body>
+</html>
